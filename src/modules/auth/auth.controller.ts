@@ -8,6 +8,13 @@ import {
   signToken,
 } from "../../helpers";
 import { AuthService } from "./auth.service";
+import {
+  ConflictError,
+  InternalServerError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from "../../utils/errorHandler";
 
 // handle login
 const handleLogin = async (req: Request, res: Response) => {
@@ -22,13 +29,13 @@ const handleLogin = async (req: Request, res: Response) => {
     const user = await AuthService.findUserByEmail(email);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      throw new NotFoundError("User not found");
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      throw new UnauthorizedError("Invalid password");
     }
 
     const token = signToken({
@@ -69,19 +76,19 @@ const handleCreateInvite = async (req: Request, res: Response) => {
     const { email, role } = req.body;
 
     if (!email || !role) {
-      return res.status(400).json({ message: "Email and role are required" });
+      throw new ValidationError("Email and role are required");
     }
 
     const existingInvite = await AuthService.findInviteByEmail(email);
 
     if (existingInvite) {
-      return res.status(409).json({ message: "Invite already exists" });
+      throw new ConflictError("Invite already exists");
     }
 
     const user = await AuthService.findUserByEmail(email);
 
     if (user) {
-      return res.status(409).json({ message: "User already exists" });
+      throw new ConflictError("User already exists");
     }
 
     const invite = await AuthService.createInvite({
@@ -104,29 +111,22 @@ const handleCreateInvite = async (req: Request, res: Response) => {
 const handleRegisterViaInvite = async (req: Request, res: Response) => {
   try {
     const { password, name, token } = req.body;
-
-    if (!name || !password || !token) {
-      return res
-        .status(400)
-        .json({ message: "Name, password and token are required" });
-    }
-
     const invite = await AuthService.findInviteByToken(token);
 
     if (!invite) {
-      return res.status(404).json({ message: "Invitation not found" });
+      throw new NotFoundError("Invitation not found");
     }
 
     const existingUser = await AuthService.findUserByEmail(invite.email);
 
     if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
+      throw new ConflictError("User already exists");
     }
 
     const isExpiredToken = invite.expiresAt < new Date();
 
     if (isExpiredToken) {
-      return res.status(401).json({ message: "Invitation expired" });
+      throw new UnauthorizedError("Invitation expired");
     }
 
     const hashedPassword = await hashPassword(password);
@@ -140,7 +140,7 @@ const handleRegisterViaInvite = async (req: Request, res: Response) => {
     });
 
     if (!createUser) {
-      return res.status(500).json({ message: "Internal server error" });
+      throw new InternalServerError("Internal server error");
     }
 
     await AuthService.updateInvite(invite.id, {

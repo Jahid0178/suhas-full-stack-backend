@@ -2,13 +2,18 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../../typescript/interface";
 import { prisma } from "../../lib/database";
 import ProjectService from "./project.service";
+import {
+  InternalServerError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errorHandler";
 
 const handleGetAllProjects = async (req: Request, res: Response) => {
   try {
     const projects = await ProjectService.getAllProjects();
 
     if (!projects) {
-      return res.status(404).json({ message: "No projects found" });
+      throw new NotFoundError("No projects found");
     }
 
     return res.status(200).json({
@@ -27,12 +32,6 @@ const handleCreateProject = async (req: AuthRequest, res: Response) => {
     const { name, description } = req.body;
     const userId = req.user?.id;
 
-    if (!name || !description) {
-      return res
-        .status(400)
-        .json({ status: 400, message: "Name and description are required" });
-    }
-
     const projectData = {
       name,
       description,
@@ -44,9 +43,7 @@ const handleCreateProject = async (req: AuthRequest, res: Response) => {
     );
 
     if (!createdProject) {
-      return res
-        .status(500)
-        .json({ status: 500, message: "Failed to create project" });
+      throw new InternalServerError("Failed to create project");
     }
 
     return res.status(201).json({
@@ -65,9 +62,7 @@ const handleUpdateProjectById = async (req: AuthRequest, res: Response) => {
     const projectId = req.params.id as string;
 
     if (!name || !description) {
-      return res
-        .status(400)
-        .json({ status: 400, message: "Name and description are required" });
+      throw new ValidationError("Name and description are required");
     }
 
     const projectData = {
@@ -82,9 +77,7 @@ const handleUpdateProjectById = async (req: AuthRequest, res: Response) => {
     );
 
     if (!updatedProject) {
-      return res
-        .status(500)
-        .json({ status: 500, message: "Failed to update project" });
+      throw new InternalServerError("Failed to update project");
     }
 
     return res.status(200).json({
@@ -105,9 +98,7 @@ const handleSoftDelete = async (req: AuthRequest, res: Response) => {
       await ProjectService.softDeleteProjectById(projectId);
 
     if (!deletedProject) {
-      return res
-        .status(500)
-        .json({ status: 500, message: "Failed to delete project" });
+      throw new InternalServerError("Failed to delete project");
     }
 
     return res.status(200).json({

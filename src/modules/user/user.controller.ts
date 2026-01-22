@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import UserService from "./user.service";
 import { Role, UserStatus } from "../../generated/prisma/enums";
+import {
+  InternalServerError,
+  NotFoundError,
+  ValidationError,
+} from "../../utils/errorHandler";
 
 const handleGetAllUsers = async (req: Request, res: Response) => {
   try {
@@ -12,7 +17,7 @@ const handleGetAllUsers = async (req: Request, res: Response) => {
     const users = await UserService.getAllUsers(skip, limit);
 
     if (!users) {
-      return res.status(404).json({ message: "Users not found" });
+      throw new NotFoundError("Users not found");
     }
 
     return res.status(200).json({
@@ -38,13 +43,13 @@ const handleUpdateUserRole = async (req: Request, res: Response) => {
     const { role } = req.body;
 
     if (!id || !role) {
-      return res.status(400).json({ message: "User ID and role are required" });
+      throw new ValidationError("User ID and role are required");
     }
 
     const existingUser = await UserService.findUserById(id as string);
 
     if (!existingUser) {
-      return res.status(404).json({ message: "User not found" });
+      throw new NotFoundError("User not found");
     }
 
     const updatedUser = await UserService.updateUserRole(
@@ -53,7 +58,7 @@ const handleUpdateUserRole = async (req: Request, res: Response) => {
     );
 
     if (!updatedUser) {
-      return res.status(500).json({ message: "Internal server error" });
+      throw new InternalServerError("Internal server error");
     }
 
     return res.status(200).json({
@@ -73,15 +78,13 @@ const handleUpdateUserStatus = async (req: Request, res: Response) => {
     const { status } = req.body;
 
     if (!id || !status) {
-      return res
-        .status(400)
-        .json({ message: "User ID and status are required" });
+      throw new ValidationError("User ID and status are required");
     }
 
     const existingUser = await UserService.findUserById(id as string);
 
     if (!existingUser) {
-      return res.status(404).json({ message: "User not found" });
+      throw new NotFoundError("User not found");
     }
 
     const updatedUser = await UserService.updateUserStatus(
@@ -90,7 +93,7 @@ const handleUpdateUserStatus = async (req: Request, res: Response) => {
     );
 
     if (!updatedUser) {
-      return res.status(500).json({ message: "Internal server error" });
+      throw new InternalServerError("Internal server error");
     }
 
     return res.status(200).json({

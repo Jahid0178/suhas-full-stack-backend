@@ -1,6 +1,7 @@
-import { PrismaClient } from "../generated/prisma/client.js";
+import config from "../config/config";
+import { PrismaClient } from "../generated/prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
 export const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL as string,
+  accelerateUrl: config.DATABASE_URL,
 }).$extends(withAccelerate());
